@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ESNext",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "outDir": "./.tsbuild",
+    "declaration": true
+  },
+  "include": ["vite.config.js"]
+}

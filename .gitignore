@@ -1,0 +1,36 @@
+# Node.js
+node_modules/
+.env
+.env.*
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vscode/
+coverage/
+/build
+/dist
+/.idea
+
+# Client build
+/client/dist
+/client/.tsbuild
+
+# Server logs
+/server/logs
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# JetBrains
+.idea/
+
+# Temporary
+*.tmp
+*.temp
+
+# Misc
+*.log
+
