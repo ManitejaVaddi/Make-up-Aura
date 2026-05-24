@@ -40,6 +40,14 @@ export default function Booking() {
     resolver: zodResolver(schema),
     defaultValues: { packageName: packageName || '' }
   });
+  const getTodayLocal = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+  const minDate = getTodayLocal();
   const selectedServiceId = watch('serviceId');
   const selectedService = useMemo(() => services.find((service) => service._id === selectedServiceId), [services, selectedServiceId]);
 
@@ -115,15 +123,15 @@ export default function Booking() {
                 <p className="text-sm uppercase tracking-[0.2em] text-rose-600">Selected package</p>
                 <p className="mt-2 text-lg font-semibold">{selectedPackage.title}</p>
                 <div className="mt-2 space-y-2 text-sm text-gray-600">
-                  <p>Package fee: <span className="font-semibold">₹{selectedPackage.price}</span></p>
-                  <p>Service fee: <span className="font-semibold">₹{selectedPackage.servicePrice}</span></p>
+                  <p>Package amount (payable): <span className="font-semibold">₹{selectedPackage.price}</span></p>
+                  <p>Included service cost: <span className="font-semibold">₹{selectedPackage.servicePrice}</span></p>
                 </div>
                 <ul className="mt-4 space-y-2 text-sm text-gray-600">
                   {selectedPackage.features.map((feature) => (
                     <li key={feature}>• {feature}</li>
                   ))}
                 </ul>
-                <p className="mt-4 text-sm text-gray-500">The package fee above is the total amount you will pay. The service fee is the underlying service included in this package.</p>
+                <p className="mt-4 text-sm text-gray-500">The package amount above is what you pay. The selected service cost is shown as the value included in the package.</p>
               </div>
             )}
             <input type="hidden" value={packageName || ''} {...register('packageName')} />
@@ -139,8 +147,8 @@ export default function Booking() {
             </label>
             <label className="block text-sm text-gray-700">
               Date
-              <input type="date" {...register('date')} className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400" />
-              {errors.date && <span className="text-sm text-rose-600">Choose a date</span>}
+              <input type="date" min={minDate} {...register('date')} className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400" />
+              {errors.date && <span className="text-sm text-rose-600">{errors.date.message || 'Choose a date'}</span>}
             </label>
             <label className="block text-sm text-gray-700">
               Time slot
@@ -168,8 +176,8 @@ export default function Booking() {
                   {bookingSummary.packageName && (
                     <>
                       <p className="text-sm text-gray-600">Package: {bookingSummary.packageName}</p>
-                      <p className="text-sm text-gray-600">Package fee: ₹{bookingSummary.packagePrice}</p>
-                      <p className="text-sm text-gray-600">Service fee: ₹{bookingSummary.servicePrice}</p>
+                      <p className="text-sm text-gray-600">Package amount charged: ₹{bookingSummary.packagePrice}</p>
+                      <p className="text-sm text-gray-600">Included service value: ₹{bookingSummary.servicePrice} (covered by package)</p>
                     </>
                   )}
                   <p className="mt-2 text-sm text-gray-600">Total paid: ₹{bookingSummary.amount}</p>
@@ -187,8 +195,8 @@ export default function Booking() {
                 <>
                   <h3 className="text-xl font-semibold text-rose-700">Selected package</h3>
                   <p className="mt-4 text-lg font-semibold text-rose-800">{selectedPackage.title}</p>
-                  <p className="mt-2 text-gray-600">Package fee: ₹{selectedPackage.price}</p>
-                  <p className="mt-2 text-gray-600">Service fee: ₹{selectedPackage.servicePrice}</p>
+                  <p className="mt-2 text-gray-600">Package amount to pay: ₹{selectedPackage.price}</p>
+                  <p className="mt-2 text-gray-600">Included service cost: ₹{selectedPackage.servicePrice}</p>
                   <p className="mt-4 text-sm text-gray-500">This package will be fulfilled by the selected service below.</p>
                 </>
               ) : (

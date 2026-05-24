@@ -72,7 +72,35 @@ export async function getBookings(req, res, next) {
     const { user } = req;
     const query = req.user.role === 'admin' ? {} : { customer: user._id };
     const bookings = await Booking.find(query).populate('service').populate('customer', 'name email');
-    res.json(bookings);
+
+    // Attach derived status and endedAt timestamp to each booking
+    const mapped = bookings.map((booking) => {
+      const b = booking.toObject();
+      const now = new Date();
+      // parse timeSlot like '10:00 AM'
+      let endedAt = null;
+      try {
+        const [hourMin, meridiem] = b.timeSlot.split(' ');
+        const [hh, mm] = hourMin.split(':').map(Number);
+        let hours = hh % 12;
+        if ((meridiem || '').toUpperCase() === 'PM') hours += 12;
+        const start = new Date(b.date);
+        start.setHours(hours, mm || 0, 0, 0);
+        const duration = b.service?.duration || 60;
+        endedAt = new Date(start.getTime() + duration * 60000);
+      } catch (e) {
+        endedAt = null;
+      }
+
+      let derivedStatus = b.status;
+      if (derivedStatus !== 'cancelled' && endedAt && endedAt < now) {
+        derivedStatus = 'completed';
+      }
+
+      return { ...b, derivedStatus, endedAt };
+    });
+
+    res.json(mapped);
   } catch (error) {
     next(error);
   }

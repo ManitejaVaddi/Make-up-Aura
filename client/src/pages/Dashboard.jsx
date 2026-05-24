@@ -33,12 +33,12 @@ export default function Dashboard() {
                     {booking.package && (
                       <p className="text-sm text-gray-600">Service: {booking.service?.name}</p>
                     )}
-                    <p className="mt-2 text-sm text-gray-600">Package fee: ₹{booking.packagePrice ?? booking.amount}</p>
+                     <p className="mt-2 text-sm text-gray-600">Package fee: ₹{booking.packagePrice ?? booking.amount}</p>
                     {booking.package && (
-                      <p className="text-sm text-gray-600">Service fee: ₹{booking.servicePrice}</p>
+                      <p className="text-sm text-gray-600">Included service value: ₹{booking.servicePrice}</p>
                     )}
                     <p className="mt-2 text-sm text-gray-600">{new Date(booking.date).toLocaleDateString()} · {booking.timeSlot}</p>
-                    <p className="mt-2 text-sm text-gray-500">Status: {booking.status}</p>
+                     <p className="mt-2 text-sm text-gray-500">Status: {booking.derivedStatus || booking.status}</p>
                   </div>
                 ))}
               </div>

@@ -50,3 +50,32 @@ export async function deleteService(req, res, next) {
     next(error);
   }
 }
+
+export async function addServiceImage(req, res, next) {
+  try {
+    const { imageUrl } = req.body;
+    if (!imageUrl) return res.status(400).json({ message: 'imageUrl is required' });
+    const service = await Service.findById(req.params.serviceId);
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+    service.images = service.images || [];
+    service.images.push(imageUrl);
+    await service.save();
+    res.status(200).json(service);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeServiceImage(req, res, next) {
+  try {
+    const { imageUrl } = req.body;
+    if (!imageUrl) return res.status(400).json({ message: 'imageUrl is required' });
+    const service = await Service.findById(req.params.serviceId);
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+    service.images = (service.images || []).filter((img) => img !== imageUrl);
+    await service.save();
+    res.status(200).json(service);
+  } catch (error) {
+    next(error);
+  }
+}

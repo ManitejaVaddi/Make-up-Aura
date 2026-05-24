@@ -29,7 +29,33 @@ export async function getUsers(req, res, next) {
 export async function getBookingsAdmin(req, res, next) {
   try {
     const bookings = await Booking.find().populate('service').populate('customer', 'name email');
-    res.json(bookings);
+
+    const now = new Date();
+    const mapped = bookings.map((booking) => {
+      const b = booking.toObject();
+      let endedAt = null;
+      try {
+        const [hourMin, meridiem] = b.timeSlot.split(' ');
+        const [hh, mm] = hourMin.split(':').map(Number);
+        let hours = hh % 12;
+        if ((meridiem || '').toUpperCase() === 'PM') hours += 12;
+        const start = new Date(b.date);
+        start.setHours(hours, mm || 0, 0, 0);
+        const duration = b.service?.duration || 60;
+        endedAt = new Date(start.getTime() + duration * 60000);
+      } catch (e) {
+        endedAt = null;
+      }
+
+      let derivedStatus = b.status;
+      if (derivedStatus !== 'cancelled' && endedAt && endedAt < now) {
+        derivedStatus = 'completed';
+      }
+
+      return { ...b, derivedStatus, endedAt };
+    });
+
+    res.json(mapped);
   } catch (error) {
     next(error);
   }

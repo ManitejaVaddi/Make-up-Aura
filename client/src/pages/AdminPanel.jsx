@@ -29,6 +29,30 @@ export default function AdminPanel() {
     setServices(response.data);
   };
 
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  const handleImageUpload = async (serviceId, file) => {
+    if (!file) return;
+    if (!cloudName || !uploadPreset) return alert('Cloudinary not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET');
+    const form = new FormData();
+    form.append('file', file);
+    form.append('upload_preset', uploadPreset);
+
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
+    const res = await fetch(url, { method: 'POST', body: form });
+    const data = await res.json();
+    if (!data.secure_url) return alert('Upload failed');
+    await api.post(`/services/${serviceId}/images`, { imageUrl: data.secure_url });
+    await refreshServices();
+  };
+
+  const handleRemoveImage = async (serviceId, imageUrl) => {
+    if (!window.confirm('Remove this image?')) return;
+    await api.delete(`/services/${serviceId}/images`, { data: { imageUrl } });
+    await refreshServices();
+  };
+
   const handleServiceChange = (field, value) => {
     setServiceForm((prev) => ({ ...prev, [field]: value }));
   };
@@ -103,22 +127,53 @@ export default function AdminPanel() {
       <div className="mt-10 grid gap-10 lg:grid-cols-[1.4fr,0.9fr]">
         <div className="space-y-10 rounded-[40px] bg-white p-8 shadow-glass">
           <div>
-            <h2 className="font-semibold text-2xl text-rose-800">Recent bookings</h2>
-            <p className="mt-2 text-gray-600">Review bookings from clients with customer names, booking status, and service details.</p>
+            <h2 className="font-semibold text-2xl text-rose-800">Upcoming & recent bookings</h2>
+            <p className="mt-2 text-gray-600">Bookings that are upcoming or recently completed (completed bookings move to history after 24 hours).</p>
             <div className="mt-6 space-y-4">
-              {bookings.length === 0 ? <p className="text-gray-500">No bookings available.</p> : bookings.slice(0, 6).map((booking) => (
-                <div key={booking._id} className="grid gap-4 rounded-3xl border border-rose-100 bg-rose-50 p-5 sm:grid-cols-[1fr,1fr,0.9fr]">
-                  <div>
-                    <p className="font-semibold text-rose-800">{booking.service?.name}</p>
-                    <p className="text-sm text-gray-600">{booking.customer?.name} · {booking.customer?.email}</p>
+              {bookings.length === 0 ? <p className="text-gray-500">No bookings available.</p> : (() => {
+                const now = new Date();
+                const upcoming = bookings.filter((b) => !b.endedAt || new Date(b.endedAt) >= now);
+                const justCompleted = bookings.filter((b) => b.endedAt && new Date(b.endedAt) < now && new Date(b.endedAt) >= new Date(now.getTime() - 24 * 60 * 60 * 1000));
+                const display = upcoming.concat(justCompleted).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 6);
+                return display.map((booking) => (
+                  <div key={booking._id} className="grid gap-4 rounded-3xl border border-rose-100 bg-rose-50 p-5 sm:grid-cols-[1fr,1fr,0.9fr]">
+                    <div>
+                      <p className="font-semibold text-rose-800">{booking.service?.name}</p>
+                      <p className="text-sm text-gray-600">{booking.customer?.name} · {booking.customer?.email}</p>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {new Date(booking.date).toLocaleDateString()} · {booking.timeSlot}
+                      {booking.package && <span className="block text-gray-500">Package: {booking.package}</span>}
+                    </div>
+                    <div className="text-right text-sm font-semibold text-rose-600">{booking.derivedStatus || booking.status}</div>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {new Date(booking.date).toLocaleDateString()} · {booking.timeSlot}
-                    {booking.package && <span className="block text-gray-500">Package: {booking.package}</span>}
+                ));
+              })()}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="font-semibold text-2xl text-rose-800">Booking history</h2>
+            <p className="mt-2 text-gray-600">Bookings older than 24 hours.</p>
+            <div className="mt-6 space-y-4">
+              {(() => {
+                const now = new Date();
+                const history = bookings.filter((b) => b.endedAt && new Date(b.endedAt) < new Date(now.getTime() - 24 * 60 * 60 * 1000)).sort((a, b) => new Date(b.endedAt) - new Date(a.endedAt));
+                if (history.length === 0) return <p className="text-gray-500">No history yet.</p>;
+                return history.slice(0, 6).map((booking) => (
+                  <div key={booking._id} className="grid gap-4 rounded-3xl border border-rose-100 bg-cream p-5 sm:grid-cols-[1fr,1fr,0.9fr]">
+                    <div>
+                      <p className="font-semibold text-rose-800">{booking.service?.name}</p>
+                      <p className="text-sm text-gray-600">{booking.customer?.name} · {booking.customer?.email}</p>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {new Date(booking.date).toLocaleDateString()} · {booking.timeSlot}
+                      {booking.package && <span className="block text-gray-500">Package: {booking.package}</span>}
+                    </div>
+                    <div className="text-right text-sm font-semibold text-rose-600">{booking.derivedStatus || booking.status}</div>
                   </div>
-                  <div className="text-right text-sm font-semibold text-rose-600">{booking.status}</div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           </div>
 
@@ -127,15 +182,35 @@ export default function AdminPanel() {
             <p className="mt-2 text-gray-600">Add, update, or remove services offered on the website.</p>
             <div className="mt-6 space-y-4">
               {services.length === 0 ? <p className="text-gray-500">No services loaded.</p> : services.map((service) => (
-                <div key={service._id} className="rounded-3xl border border-rose-100 bg-rose-50 p-5 sm:grid sm:grid-cols-[1fr,0.7fr,0.6fr] sm:items-center gap-4">
+                <div key={service._id} className="rounded-3xl border border-rose-100 bg-rose-50 p-5 sm:grid sm:grid-cols-[1fr,0.7fr,0.6fr] sm:items-start gap-4">
                   <div>
                     <p className="font-semibold text-rose-800">{service.name}</p>
                     <p className="text-sm text-gray-600">{service.category} · ₹{service.price} · {service.duration}m</p>
+                    <div className="mt-3 flex gap-2">
+                      {(service.images || []).slice(0,4).map((img) => (
+                        <img key={img} src={img} alt={service.name} className="h-12 w-12 rounded-md object-cover" />
+                      ))}
+                    </div>
                   </div>
                   <div className="text-sm text-gray-600">Featured: {service.featured ? 'Yes' : 'No'}</div>
-                  <button className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50" onClick={() => handleDeleteService(service._id)}>
-                    Delete
-                  </button>
+                  <div className="flex flex-col items-end gap-2">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-full border border-rose-200 bg-white px-3 py-2 text-sm text-rose-700">
+                      Upload image
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(service._id, e.target.files[0])} />
+                    </label>
+                    <button className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm text-rose-700 transition hover:bg-rose-50" onClick={() => handleDeleteService(service._id)}>
+                      Delete
+                    </button>
+                  </div>
+                  <div className="col-span-3 mt-2">
+                    {(service.images || []).map((img) => (
+                      <div key={img} className="mt-2 flex items-center justify-between gap-4 rounded-md border border-rose-100 bg-white p-2">
+                        <img src={img} alt={service.name} className="h-20 w-28 rounded-md object-cover" />
+                        <div className="flex-1 text-sm text-gray-600">{img}</div>
+                        <button onClick={() => handleRemoveImage(service._id, img)} className="rounded-full border border-rose-200 bg-white px-3 py-2 text-sm text-rose-700">Remove</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
