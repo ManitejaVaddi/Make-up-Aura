@@ -32,6 +32,7 @@ export async function getGallery(req, res, next) {
     const query = {};
     if (req.query.category) query.category = req.query.category;
     if (req.query.type) query.type = req.query.type;
+    if (req.query.tags) query.tags = { $in: req.query.tags.split(',').map((tag) => tag.trim().toLowerCase()) };
     const gallery = await Gallery.find(query).sort({ createdAt: -1 });
     res.json(gallery);
   } catch (error) {

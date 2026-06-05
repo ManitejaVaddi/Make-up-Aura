@@ -9,11 +9,18 @@ const bookingSchema = new mongoose.Schema(
     status: { type: String, enum: ['pending', 'confirmed', 'completed', 'cancelled'], default: 'pending' },
     notes: { type: String },
     amount: { type: Number, required: true },
+    paidAmount: { type: Number, default: 0 },
+    depositPercent: { type: Number, default: 0 },
+    depositAmount: { type: Number, default: 0 },
+    paymentStatus: { type: String, enum: ['unpaid', 'partial', 'paid'], default: 'unpaid' },
+    feedbackRequestSent: { type: Boolean, default: false },
+    feedbackCouponCode: { type: String },
     servicePrice: { type: Number, required: true },
     packagePrice: { type: Number },
     payment: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
     coupon: { type: mongoose.Schema.Types.ObjectId, ref: 'Coupon' },
     package: { type: String },
+    location: String,
     metadata: {
       location: String,
       artist: String

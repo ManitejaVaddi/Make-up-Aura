@@ -12,7 +12,8 @@ const schema = z.object({
   date: z.string().min(1),
   timeSlot: z.string().min(1),
   notes: z.string().optional(),
-  packageName: z.string().optional()
+  packageName: z.string().optional(),
+  depositPercent: z.preprocess((val) => (val === '' || val === undefined ? undefined : Number(val)), z.number().optional())
 });
 
 const slots = ['10:00 AM', '12:00 PM', '02:00 PM', '04:00 PM', '06:00 PM'];
@@ -32,6 +33,8 @@ export default function Booking() {
   const [services, setServices] = useState([]);
   const [bookingSuccess, setBookingSuccess] = useState(null);
   const [bookingSummary, setBookingSummary] = useState(null);
+  const [savedPaymentInfo, setSavedPaymentInfo] = useState(null);
+  const [savePaymentMethod, setSavePaymentMethod] = useState(false);
   const [searchParams] = useSearchParams();
   const packageName = searchParams.get('package');
   const selectedPackage = packageName ? packages.find((pkg) => pkg.title === packageName) : null;
@@ -49,6 +52,7 @@ export default function Booking() {
   };
   const minDate = getTodayLocal();
   const selectedServiceId = watch('serviceId');
+  const depositPercent = Number(watch('depositPercent') || 0);
   const selectedService = useMemo(() => services.find((service) => service._id === selectedServiceId), [services, selectedServiceId]);
 
   useEffect(() => {
@@ -61,18 +65,26 @@ export default function Booking() {
         }
       }
     });
+
+    api.get('/payments/saved').then((response) => {
+      setSavedPaymentInfo(response.data);
+    }).catch(() => {
+      setSavedPaymentInfo(null);
+    });
   }, [selectedPackage, setValue]);
 
   const handleBooking = async (data) => {
     const bookingResponse = await api.post('/bookings', data);
-    const orderResponse = await api.post('/payments/order', { bookingId: bookingResponse.data._id });
+    const orderResponse = await api.post('/payments/order', { bookingId: bookingResponse.data._id, savePaymentMethod });
 
     const summary = {
       amount: bookingResponse.data.amount,
+      paidNow: orderResponse.data.amount,
       packageName: bookingResponse.data.package,
       packagePrice: bookingResponse.data.packagePrice,
       servicePrice: bookingResponse.data.servicePrice,
-      serviceName: selectedService?.name
+      serviceName: selectedService?.name,
+      depositPercent: data.depositPercent || 0
     };
 
     if (orderResponse.data.fallback) {
@@ -83,6 +95,15 @@ export default function Booking() {
 
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) return alert('Unable to load payment gateway');
+
+    // Confirm amount with the user before opening the payment gateway
+    try {
+      const amountNow = Number(orderResponse.data.amount || 0);
+      const ok = window.confirm(`You will be charged ₹${amountNow.toFixed(2)} now. Proceed to payment?`);
+      if (!ok) return;
+    } catch (e) {
+      // fall through
+    }
 
     const options = {
       key: orderResponse.data.key,
@@ -105,7 +126,8 @@ export default function Booking() {
         name: user?.name,
         email: user?.email
       },
-      theme: { color: '#be185d' }
+      theme: { color: '#be185d' },
+      customer_id: orderResponse.data.customerId || undefined
     };
     const paymentObject = new window.Razorpay(options);
     paymentObject.open();
@@ -135,39 +157,113 @@ export default function Booking() {
               </div>
             )}
             <input type="hidden" value={packageName || ''} {...register('packageName')} />
-            <label className="block text-sm text-gray-700">
-              Service
-              <select {...register('serviceId')} className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400">
-                <option value="">Choose service</option>
-                {services.map((service) => (
-                  <option key={service._id} value={service._id}>{service.name} - ₹{service.price}</option>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="serviceId" className="block text-sm font-medium text-gray-700">Service</label>
+                <select
+                  id="serviceId"
+                  {...register('serviceId')}
+                  aria-invalid={errors.serviceId ? 'true' : 'false'}
+                  aria-describedby={errors.serviceId ? 'serviceId-error' : undefined}
+                  className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400"
+                >
+                  <option value="">Choose service</option>
+                  {services.map((service) => (
+                    <option key={service._id} value={service._id}>{service.name} - ₹{service.price}</option>
+                  ))}
+                </select>
+                {errors.serviceId && (
+                  <span id="serviceId-error" role="alert" className="text-sm text-rose-600">Choose a service</span>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="bookingDate" className="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  id="bookingDate"
+                  type="date"
+                  min={minDate}
+                  {...register('date')}
+                  aria-invalid={errors.date ? 'true' : 'false'}
+                  aria-describedby={errors.date ? 'date-error' : undefined}
+                  className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400"
+                />
+                {errors.date && (
+                  <span id="date-error" role="alert" className="text-sm text-rose-600">{errors.date.message || 'Choose a date'}</span>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="timeSlot" className="block text-sm font-medium text-gray-700">Time slot</label>
+                <select
+                  id="timeSlot"
+                  {...register('timeSlot')}
+                  aria-invalid={errors.timeSlot ? 'true' : 'false'}
+                  aria-describedby={errors.timeSlot ? 'timeSlot-error' : undefined}
+                  className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400"
+                >
+                  <option value="">Choose slot</option>
+                  {slots.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
+                </select>
+                {errors.timeSlot && (
+                  <span id="timeSlot-error" role="alert" className="text-sm text-rose-600">Choose a time slot</span>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  id="notes"
+                  {...register('notes')}
+                  rows="4"
+                  placeholder="Any specific requests or bridal preferences"
+                  className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400"
+                />
+              </div>
+            </div>
+            <fieldset className="rounded-3xl border border-rose-100 bg-rose-50 p-4 text-sm text-gray-700">
+              <legend className="font-semibold text-rose-800">Pay now option</legend>
+              <p className="mt-2 text-sm text-gray-600">Choose whether to pay a deposit now or settle the full amount at booking.</p>
+              <div className="mt-4 grid gap-3">
+                {[0, 25, 50, 75, 100].map((percent) => (
+                  <label key={percent} className="flex items-center gap-3 rounded-3xl border px-4 py-3 text-sm transition hover:border-rose-300">
+                    <input
+                      type="radio"
+                      value={percent}
+                      {...register('depositPercent')}
+                      checked={depositPercent === percent}
+                      aria-checked={depositPercent === percent}
+                      className="h-4 w-4 rounded border-rose-300 text-rose-600"
+                    />
+                    <span>{percent === 0 ? 'Pay full amount now' : `${percent}% deposit now`}</span>
+                  </label>
                 ))}
-              </select>
-              {errors.serviceId && <span className="text-sm text-rose-600">Choose a service</span>}
-            </label>
-            <label className="block text-sm text-gray-700">
-              Date
-              <input type="date" min={minDate} {...register('date')} className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400" />
-              {errors.date && <span className="text-sm text-rose-600">{errors.date.message || 'Choose a date'}</span>}
-            </label>
-            <label className="block text-sm text-gray-700">
-              Time slot
-              <select {...register('timeSlot')} className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400">
-                <option value="">Choose slot</option>
-                {slots.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
-              </select>
-              {errors.timeSlot && <span className="text-sm text-rose-600">Choose a time slot</span>}
-            </label>
-            <label className="block text-sm text-gray-700">
-              Notes
-              <textarea {...register('notes')} rows="4" placeholder="Any specific requests or bridal preferences" className="mt-2 w-full rounded-3xl border border-rose-200 bg-cream p-4 text-sm outline-none focus:border-rose-400" />
-            </label>
+              </div>
+            </fieldset>
+            <div className="mt-4 space-y-3 rounded-3xl border border-rose-100 bg-rose-50 p-4 text-sm text-gray-700">
+              {savedPaymentInfo?.paymentMethods?.length ? (
+                <div className="space-y-2">
+                  <p className="font-semibold text-rose-800">Saved payment method</p>
+                  <p>{savedPaymentInfo.paymentMethods[0].network} ending {savedPaymentInfo.paymentMethods[0].last4}</p>
+                  <p className="text-gray-500">Your saved card will be available for faster checkout.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="font-semibold text-rose-800">Save payment details</p>
+                  <p className="text-gray-500">Enable future one-click booking with your saved card.</p>
+                </div>
+              )}
+              <label className="flex items-center gap-3 pt-3">
+                <input type="checkbox" checked={savePaymentMethod} onChange={(e) => setSavePaymentMethod(e.target.checked)} className="h-4 w-4 rounded border-rose-300 text-rose-600" />
+                {savedPaymentInfo?.paymentMethods?.length ? 'Always use my saved payment method when available' : 'Save this card for future bookings'}
+              </label>
+            </div>
             <button type="submit" className="w-full rounded-full bg-rose-700 px-6 py-4 text-sm font-semibold text-white transition hover:bg-rose-800">
               Reserve & Pay Securely
             </button>
           </form>
           {bookingSuccess && (
-            <div className="mt-6 rounded-3xl bg-rose-50 p-5 text-rose-700">
+            <div role="status" aria-live="polite" className="mt-6 rounded-3xl bg-rose-50 p-5 text-rose-700">
               <p>{bookingSuccess}</p>
               {bookingSummary && (
                 <div className="mt-4 rounded-3xl bg-white p-4 text-rose-800">
@@ -180,7 +276,9 @@ export default function Booking() {
                       <p className="text-sm text-gray-600">Included service value: ₹{bookingSummary.servicePrice} (covered by package)</p>
                     </>
                   )}
-                  <p className="mt-2 text-sm text-gray-600">Total paid: ₹{bookingSummary.amount}</p>
+                  <p className="mt-2 text-sm text-gray-600">Total booking amount: ₹{bookingSummary.amount}</p>
+                  <p className="text-sm text-gray-600">Charged now: ₹{bookingSummary.paidNow}</p>
+                  {bookingSummary.depositPercent > 0 && <p className="text-sm text-gray-600">Deposit option: {bookingSummary.depositPercent}%</p>}
                 </div>
               )}
             </div>

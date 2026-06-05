@@ -13,6 +13,17 @@ const userSchema = new mongoose.Schema(
     bio: { type: String },
     authProvider: { type: String, enum: ['email', 'google'], default: 'email' },
     refreshToken: { type: String },
+    razorpayCustomerId: { type: String },
+    paymentMethods: [{
+      provider: { type: String, default: 'razorpay' },
+      methodId: { type: String },
+      type: { type: String },
+      network: { type: String },
+      last4: { type: String },
+      cardType: { type: String },
+      expiry: { type: String },
+      createdAt: { type: Date, default: Date.now }
+    }],
     wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }],
     notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }]
   },

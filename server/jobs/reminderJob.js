@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import Booking from '../models/bookingModel.js';
 import { sendEmail } from '../config/mailer.js';
 import User from '../models/userModel.js';
+import { sendSmsIfConfigured } from '../utils/communication.js';
 
 export function startReminderJob() {
   cron.schedule('0 8 * * *', async () => {
@@ -32,6 +33,9 @@ export function startReminderJob() {
             </div>
           `
         });
+      }
+      if (booking.customer?.phone) {
+        await sendSmsIfConfigured(booking.customer.phone, `Reminder: your bridal makeup appointment for ${booking.service.name} is tomorrow at ${booking.timeSlot}.`);
       }
     }
   }, { timezone: 'Asia/Kolkata' });

@@ -19,7 +19,8 @@ export const createBookingSchema = z.object({
   notes: z.string().optional(),
   couponCode: z.string().optional(),
   location: z.string().optional(),
-  packageName: z.string().optional()
+  packageName: z.string().optional(),
+  depositPercent: z.number().optional().refine((val) => val === undefined || [0, 25, 50, 75, 100].includes(val), { message: 'Deposit percent must be 0, 25, 50, 75, or 100' })
 });
 
 export const updateBookingSchema = z.object({

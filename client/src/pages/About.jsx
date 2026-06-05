@@ -22,7 +22,7 @@ export default function About() {
         <div className="relative overflow-hidden rounded-[40px] bg-white p-8 shadow-glass">
           <img src="https://images.unsplash.com/photo-1517061497104-12859fd5ed56?auto=format&fit=crop&w=900&q=80" alt="Bridal studio" className="h-full w-full rounded-[32px] object-cover" />
           <div className="absolute bottom-6 left-6 rounded-3xl bg-white/90 p-5 shadow-xl">
-            <p className="text-sm uppercase tracking-[0.24em] text-rose-500">Signature service</p>
+            {/* <p className="text-sm uppercase tracking-[0.24em] text-rose-500">Signature service</p> */}
             <h2 className="mt-2 text-xl font-semibold text-rose-800">Destination makeup for every celebration.</h2>
           </div>
         </div>

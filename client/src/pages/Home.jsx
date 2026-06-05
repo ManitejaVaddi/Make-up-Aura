@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import api from '../services/api.js';
 
 const featuredServices = [
   { title: 'Luxury Bridal Makeup', description: 'Radiant bespoke bridal beauty with glow, contour and cinematic finish.' },
@@ -49,7 +51,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-6 py-16">
+          <section className="mx-auto max-w-7xl px-6 py-16">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="rounded-[32px] bg-rose-50 p-10 shadow-glass">
             <h2 className="font-display text-3xl text-rose-800">Why brides choose us</h2>
@@ -80,6 +82,77 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="text-center">
+          <p className="uppercase tracking-[0.3em] text-sm text-rose-700">Voices</p>
+          <h2 className="font-display text-3xl font-semibold text-rose-900">What our clients say</h2>
+        </div>
+        <Testimonials />
+      </section>
     </section>
+  );
+}
+
+function Testimonials() {
+  const [items, setItems] = useState([]);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    api
+      .get('/testimonials', { params: { featured: true } })
+      .then((res) => mounted && setItems(res.data || []))
+      .catch(() => mounted && setItems([]));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!items || items.length <= 1) return;
+    const t = setInterval(() => setIndex((i) => (i + 1) % items.length), 4500);
+    return () => clearInterval(t);
+  }, [items]);
+
+  if (!items || items.length === 0) return <p className="mt-6 text-center text-gray-500">No testimonials yet.</p>;
+
+  const prev = () => setIndex((i) => (i - 1 + items.length) % items.length);
+  const next = () => setIndex((i) => (i + 1) % items.length);
+
+  const t = items[index];
+
+  return (
+    <div className="mt-8">
+      <div className="relative mx-auto max-w-3xl">
+        <div className="rounded-2xl border border-rose-100 bg-white p-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <img src={t.avatar || 'https://via.placeholder.com/80'} alt={t.customerName} className="h-16 w-16 rounded-full object-cover" />
+            <div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-rose-800">{t.customerName || 'Guest'}</p>
+                  <p className="text-sm text-gray-500">{t.rating} ⭐</p>
+                </div>
+                <div className="text-sm text-gray-400">{t.date ? new Date(t.date).toLocaleDateString() : ''}</div>
+              </div>
+              <p className="mt-4 text-gray-600">{t.comment}</p>
+            </div>
+          </div>
+        </div>
+
+        <button aria-label="Previous testimonial" onClick={prev} className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow">
+          ‹
+        </button>
+        <button aria-label="Next testimonial" onClick={next} className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow">
+          ›
+        </button>
+
+        <div className="mt-3 flex items-center justify-center gap-2">
+          {items.map((_, i) => (
+            <button key={i} onClick={() => setIndex(i)} className={`h-2 w-8 rounded-full ${i === index ? 'bg-rose-700' : 'bg-rose-200'}`} aria-label={`Show testimonial ${i + 1}`} />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

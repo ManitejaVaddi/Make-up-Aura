@@ -1,10 +1,13 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import api from '../../services/api.js';
 
 const links = [
   { name: 'About', path: '/about' },
   { name: 'Services', path: '/services' },
   { name: 'Packages', path: '/packages' },
+  { name: 'FAQ', path: '/faq' },
   { name: 'Portfolio', path: '/portfolio' },
   { name: 'Reviews', path: '/reviews' },
   { name: 'Booking', path: '/book' }
@@ -12,7 +15,21 @@ const links = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      api.get('/admin/notifications')
+        .then((response) => {
+          const unread = (response.data || []).filter((notification) => !notification.read).length;
+          setUnreadNotifications(unread);
+        })
+        .catch(() => setUnreadNotifications(0));
+    } else {
+      setUnreadNotifications(0);
+    }
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 shadow-sm border-b border-rose-100">
@@ -20,7 +37,7 @@ export default function Navbar() {
         <Link to="/" className="text-2xl font-display tracking-tight text-rose-700">
           Bridal Aura
         </Link>
-        <nav className="hidden gap-6 md:flex items-center text-sm text-luxury font-medium">
+        <nav aria-label="Primary navigation" className="hidden gap-6 md:flex items-center text-sm text-luxury font-medium">
           {links.map((link) => (
             <NavLink key={link.path} to={link.path} className={({ isActive }) => isActive ? 'text-rose-600 underline underline-offset-4' : 'hover:text-rose-500'}>
               {link.name}

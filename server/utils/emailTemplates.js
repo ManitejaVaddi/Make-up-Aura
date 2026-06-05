@@ -53,3 +53,32 @@ export function passwordResetEmail(name, resetUrl) {
     </div>
   `;
 }
+
+export function reviewRequestEmail(name, booking, couponCode) {
+  return `
+    <div style="font-family:Arial,sans-serif;color:#3b3b3b;line-height:1.6;">
+      <h1 style="color:#b91c1c;">We’d Love Your Feedback</h1>
+      <p>Hi ${name},</p>
+      <p>Thank you for trusting us with your bridal beauty experience.</p>
+      <p>We’d be grateful if you could share a review for your service with <strong>${booking.service.name}</strong> on ${new Date(booking.date).toLocaleDateString()} at ${booking.timeSlot}.</p>
+      <p>As a thank you, use coupon code <strong>${couponCode}</strong> for your next booking.</p>
+      <p style="margin-top:24px;color:#d97706;">With gratitude,<br/>The Bridal Beauty Studio Team</p>
+    </div>
+  `;
+}
+
+export function adminAlertEmail(name, action, booking, customer) {
+  return `
+    <div style="font-family:Arial,sans-serif;color:#3b3b3b;line-height:1.6;">
+      <h1 style="color:#8b5cf6;">${action} Alert</h1>
+      <p>Hi ${name},</p>
+      <p>${action} has been recorded for the booking.</p>
+      <ul>
+        <li><strong>Customer:</strong> ${customer.name} (${customer.email})</li>
+        <li><strong>Service:</strong> ${booking.service?.name || 'Unknown'}</li>
+        <li><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</li>
+        <li><strong>Time:</strong> ${booking.timeSlot}</li>
+      </ul>
+    </div>
+  `;
+}

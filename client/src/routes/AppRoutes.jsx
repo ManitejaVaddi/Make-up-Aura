@@ -3,9 +3,11 @@ import Home from '../pages/Home.jsx';
 import About from '../pages/About.jsx';
 import Services from '../pages/Services.jsx';
 import Packages from '../pages/Packages.jsx';
+import PackageDetail from '../pages/PackageDetail.jsx';
 import Portfolio from '../pages/Portfolio.jsx';
 import Reviews from '../pages/Reviews.jsx';
 import Booking from '../pages/Booking.jsx';
+import FAQ from '../pages/FAQ.jsx';
 import Contact from '../pages/Contact.jsx';
 import Login from '../pages/Login.jsx';
 import AdminLogin from '../pages/AdminLogin.jsx';
@@ -22,7 +24,9 @@ export default function AppRoutes() {
       <Route path="/about" element={<About />} />
       <Route path="/services" element={<Services />} />
       <Route path="/packages" element={<Packages />} />
+      <Route path="/packages/:packageSlug" element={<PackageDetail />} />
       <Route path="/portfolio" element={<Portfolio />} />
+      <Route path="/faq" element={<FAQ />} />
       <Route path="/reviews" element={<Reviews />} />
       <Route path="/book" element={<Booking />} />
       <Route path="/booking" element={<Booking />} />
